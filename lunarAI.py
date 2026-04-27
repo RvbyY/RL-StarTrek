@@ -15,9 +15,6 @@ env = gym.make("LunarLander-v3", continuous=False, gravity=-10.0,
 state = env.observation_space.shape
 state_size = env.observation_space.shape[0]
 action_size = env.action_space.n
-# print(state)
-# print(state_size)
-# print(action_size)
 learning_rate = 5e-4
 minibatch = 150
 gamma = 0.99
@@ -75,17 +72,16 @@ class Agent():
         self.local_qnetwork = ANN(state_size, action_size)
         self.target_qnetwork = ANN(state_size, action_size)
         self.target_qnetwork.load_state_dict(self.local_qnetwork.state_dict())
-        self.optimizer = optim.Adam(self.local_qnetwork.parameters(), lr=learning_rate)
+        self.optimizer = torch.optim.Adam(self.local_qnetwork.parameters(), lr=learning_rate)
         self.memory = ReplayMemory(replay_buffer_size)
         self.t_step = 0
 
     def step(self, state, action, reward, next_state, done):
         self.memory.push((state, action, reward, next_state, done))
         self.t_step = (self.t_step + 1) % 4
-        if self.t_step == 0:
-            if len(self.memory.memory) > minibatch:
-                experiences = self.memory.sample(minibatch)
-                self.learn(experiences, gamma)
+        if self.t_step == 0 and len(self.memory.memory) > minibatch:
+            experiences = self.memory.sample(minibatch)
+            self.learn(experiences, gamma)
 
     def get_action(self, state, epsilon):
         state = torch.from_numpy(state).float().unsqueeze(0)
@@ -113,12 +109,8 @@ class Agent():
         for target_params, local_params in zip(target_qnetwork.parameters(), local_qnetwork.parameters()):
             target_params.data.copy_(interpolation_parameter* local_params.data + (1.0 - interpolation_parameter)* target_params.data)
 
-agent = Agent(state_size, action_size)
-epsilon = epsilon_starting_value
-for episode in range(0, number_episodes):
-    state, _ = env.reset()
-    score = 0
-    for st in range(0, max_time_steps):
+def time_step_loop(agent, epsilon, state, score):
+    for _ in range(0, max_time_steps):
         action = agent.get_action(state, epsilon)
         next_state, reward, terminated, truncated, _ = env.step(action)
         done = terminated or truncated
@@ -127,11 +119,23 @@ for episode in range(0, number_episodes):
         score += reward
         if done:
             break
-    scores_100_episodes.append(score)
-    epsilon = max(epsilon_ending_value, epsilon*epsilon_decay_value)
+    return score
 
-    if episode % 10 == 0:
-        print('Episode {} Avg Score: {:.2f}'.format(episode, np.mean(scores_100_episodes)))
-    if np.mean(scores_100_episodes) >= 200:
-        print('Congratulation, Solved in {:d} episodes \t Avg Score {:.2f}'.format(episode, np.mean(scores_100_episodes)))
-        break
+
+def main():
+    agent = Agent(state_size, action_size)
+    epsilon = epsilon_starting_value
+    for episode in range(0, number_episodes):
+        state, _ = env.reset()
+        score = 0
+        score = time_step_loop(agent, epsilon, state, score)
+        scores_100_episodes.append(score)
+        epsilon = max(epsilon_ending_value, epsilon*epsilon_decay_value)
+        if episode % 10 == 0:
+            print('Episode {} Avg Score: {:.2f}'.format(episode, np.mean(scores_100_episodes)))
+        if np.mean(scores_100_episodes) >= 200:
+            print('Congratulation, Solved in {:d} episodes \t Avg Score {:.2f}'.format(episode, np.mean(scores_100_episodes)))
+            break
+
+if __name__ == "__main__":
+    main()
