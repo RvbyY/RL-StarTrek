@@ -81,11 +81,6 @@ class EpisodeLogger:
                 self._file_initialized = True
             writer.writerow(row)
 
-
-    def result_episode(self):
-        writeheader = self.env_utils
-        return (self)
-
     def _print_episode(self, row):
         icon = {"landing": "V", "crash": "X", "out_of_view": "/", "sleep": "Zhhhh"}.get(row["reason"], "?")
         print(
