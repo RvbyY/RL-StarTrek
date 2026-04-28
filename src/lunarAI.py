@@ -108,34 +108,3 @@ class Agent():
     def soft_update(self, local_qnetwork, target_qnetwork, interpolation_parameter):
         for target_params, local_params in zip(target_qnetwork.parameters(), local_qnetwork.parameters()):
             target_params.data.copy_(interpolation_parameter* local_params.data + (1.0 - interpolation_parameter)* target_params.data)
-
-# def time_step_loop(agent, epsilon, state, score):
-#     for _ in range(0, max_time_steps):
-#         action = agent.get_action(state, epsilon)
-#         next_state, reward, terminated, truncated, _ = env.step(action)
-#         done = terminated or truncated
-#         agent.step(state, action, reward, next_state, done)
-#         state = next_state
-#         score += reward
-#         if done:
-#             break
-#     return score
-
-
-# def main():
-#     agent = Agent(state_size, action_size)
-#     epsilon = epsilon_starting_value
-#     for episode in range(0, number_episodes):
-#         state, _ = env.reset()
-#         score = 0
-#         score = time_step_loop(agent, epsilon, state, score)
-#         scores_100_episodes.append(score)
-#         epsilon = max(epsilon_ending_value, epsilon*epsilon_decay_value)
-#         if episode % 10 == 0:
-#             print('Episode {} Avg Score: {:.2f}'.format(episode, np.mean(scores_100_episodes)))
-#         if np.mean(scores_100_episodes) >= 200:
-#             print('Congratulation, Solved in {:d} episodes \t Avg Score {:.2f}'.format(episode, np.mean(scores_100_episodes)))
-#             break
-
-# if __name__ == "__main__":
-#     main()
