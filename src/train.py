@@ -22,7 +22,7 @@ class Training():
         self.epsilon = cfg['epsilon_start']
         self.epsilon_end = cfg['epsilon_end']
         self.epsilon_decay = cfg['epsilon_decay']
-        self.max_time_step = cfg
+        self.max_time_step = cfg['max_time_steps']
         self.env = make_env(self.seed)
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.n
@@ -33,7 +33,7 @@ def run(cfg_path: str):
     with open(cfg_path) as f:
         cfg = yaml.safe_load(f)
 
-    train = Training()
+    train = Training(cfg, cfg_path)
     if train.algo == "random":
         agent = RandomPolicy(train.env.action_space, train.seed)
     elif train.algo == "heuristic":
@@ -71,11 +71,11 @@ def learn_loop(agent, train):
     scores_100_episodes = deque(maxlen=100)
     length = 0
     for episode in range(0, train.n_ep):
-        state, _ = train.env.reset(train.seed)
+        state, _ = train.env.reset(seed=train.seed)
         score = 0
-        score = time_step_loop(agent, epsilon, state, score, train, length)
+        score = time_step_loop(agent, train.epsilon, state, score, train, length)
         scores_100_episodes.append(score)
-        epsilon = max(train.epsilon_end, epsilon * train.epsilon_decay)
+        train.epsilon = max(train.epsilon_end, train.epsilon * train.epsilon_decay)
         if episode % 10 == 0:
             print('Episode {} Avg Score: {:.2f}'.format(episode, np.mean(scores_100_episodes)))
         if np.mean(scores_100_episodes) >= 200:
@@ -86,7 +86,6 @@ def learn_loop(agent, train):
     train.logger.print_summary()
     print(f"Done. CSV → {train.log_dir}/{train.run_name}.csv")
     return 0
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
