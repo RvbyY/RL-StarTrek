@@ -1,15 +1,17 @@
 import argparse
 import sys
 import numpy as np
+import os
+import torch
 from pathlib import Path
 
 sys.path.insert(0, ".")
-
 from src.env_utils import make_env, get_termination_reason
 from src.logger import EpisodeLogger
 from src.policies import RandomPolicy, HeuristicPolicy
 from src.lunarAI import ANN, ReplayMemory, Agent
 from collections import deque
+FILE_PATH = "logs/saved.txt"
 
 class Training():
 
@@ -41,6 +43,8 @@ def run(cfg_path: str):
     elif train.algo == "dqn":
         try:
             agent = Agent(train.state_size, train.action_size)
+            if os.path.exists(FILE_PATH):
+                agent = torch.load(FILE_PATH, weights_only=False)
         except ImportError:
             print("DQN pas encore implémenté.")
             sys.exit(1)
@@ -82,6 +86,7 @@ def learn_loop(agent, train):
             print('Congratulation, Solved in {:d} episodes \t Avg Score {:.2f}'.format(episode, np.mean(scores_100_episodes)))
             break
 
+    torch.save(agent, FILE_PATH)
     train.env.close()
     train.logger.print_summary()
     print(f"Done. CSV → {train.log_dir}/{train.run_name}.csv")
