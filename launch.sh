@@ -7,4 +7,4 @@ pip install torch
 pip install gymnasium
 pip install swig
 pip install gymnasium['Box2D']
-python3 src/train.py --config logs/dqn.csv
+python3 src/train.py --config configs/dqn.yaml
