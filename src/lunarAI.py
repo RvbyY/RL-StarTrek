@@ -1,5 +1,6 @@
 import os
 import random
+import yaml
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,20 +13,14 @@ from collections import deque, namedtuple
 
 env = gym.make("LunarLander-v3", continuous=False, gravity=-10.0,
                enable_wind=False, wind_power=15.0, turbulence_power=1.5)
-state = env.observation_space.shape
-state_size = env.observation_space.shape[0]
-action_size = env.action_space.n
-learning_rate = 5e-4
-minibatch = 150
-gamma = 0.99
-replay_buffer_size = 100000
-interpolation_parameter = 1e-3
-number_episodes = 5000
-max_time_steps = 1000
-epsilon_starting_value = 1.0
-epsilon_ending_value = 0.01
-epsilon_decay_value = 0.995
-scores_100_episodes = deque(maxlen=100)
+with open('configs/dqn.yaml') as f:
+    cfg = yaml.safe_load(f)
+learning_rate = float(cfg.get('learning_rate', 5e-4))
+minibatch = int(cfg.get('minibatch', 64))
+gamma = float(cfg.get('gamma', 0.99))
+interpolation_parameter = float(cfg.get('interpolation_parameter', 1e-3))
+replay_buffer_size = int(cfg.get('replay_buffer_size', 100000))
+
 
 class ANN(nn.Module):
 
@@ -106,5 +101,6 @@ class Agent():
         self.soft_update(self.local_qnetwork, self.target_qnetwork, interpolation_parameter)
 
     def soft_update(self, local_qnetwork, target_qnetwork, interpolation_parameter):
+        tau = float(interpolation_parameter)
         for target_params, local_params in zip(target_qnetwork.parameters(), local_qnetwork.parameters()):
-            target_params.data.copy_(interpolation_parameter* local_params.data + (1.0 - interpolation_parameter)* target_params.data)
+            target_params.data.copy_(tau * local_params.data + (1.0 - tau) * target_params.data)
