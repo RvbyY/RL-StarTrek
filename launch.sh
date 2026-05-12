@@ -6,5 +6,6 @@ pip install numpy
 pip install torch
 pip install gymnasium
 pip install swig
+pip install imageio
 pip install gymnasium['Box2D']
 python3 src/train.py --config configs/dqn.yaml

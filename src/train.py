@@ -2,7 +2,9 @@ import argparse
 import sys
 import numpy as np
 import os
+import gymnasium as gym
 import torch
+import imageio
 from pathlib import Path
 
 sys.path.insert(0, ".")
@@ -25,10 +27,11 @@ class Training():
         self.epsilon_end = cfg['epsilon_end']
         self.epsilon_decay = cfg['epsilon_decay']
         self.max_time_step = cfg['max_time_steps']
-        self.env = make_env(self.seed)
+        self.env = make_env(self.seed, render_mode="rgb_array")
         self.state_size = self.env.observation_space.shape[0]
         self.action_size = self.env.action_space.n
         self.logger = EpisodeLogger(f"{self.log_dir}/{self.run_name}.csv", run_name=self.run_name, verbose=True)
+        self.frames = []
 
 def run(cfg_path: str):
     import yaml
@@ -53,6 +56,26 @@ def run(cfg_path: str):
         sys.exit(1)
 
     learn_loop(agent, train)
+    train.env.close()
+    video_dir = "./videos"
+    os.makedirs(video_dir, exist_ok=True)
+    existing_tests = [f for f in os.listdir(video_dir) if f.startswith("lunar_lander_test_") and f.endswith(".gif")]
+    test_number = len(existing_tests) + 1
+    filename = f"{video_dir}/lunar_lander_test_{test_number}.gif"
+    if train.frames:
+        max_frames = 1000
+        frames_to_write = train.frames[-max_frames:]
+        if len(train.frames) > max_frames:
+            print(f"Captured {len(train.frames)} frames; exporting last {max_frames} frames to GIF.")
+        try:
+            imageio.mimwrite(filename, frames_to_write, fps=20)
+            print(f"Saved GIF → {filename}")
+        except Exception as e:
+            print(f"Failed to write GIF: {e}")
+        train.frames.clear()
+    else:
+        print("No valid frames captured; skipping GIF export.")
+
     return 0
 
 def time_step_loop(agent, epsilon, state, score, train, length):
@@ -63,6 +86,9 @@ def time_step_loop(agent, epsilon, state, score, train, length):
         agent.step(state, action, reward, next_state, done)
         state = next_state
         score += reward
+        frame = train.env.render()
+        if frame is not None:
+            train.frames.append(frame)
         if done:
             reason = get_termination_reason(next_state, terminated, truncated, info)
             train.logger.log_episode(score=score, length=length,
