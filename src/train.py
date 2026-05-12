@@ -49,10 +49,10 @@ def run(cfg_path: str):
             if os.path.exists(FILE_PATH):
                 agent = torch.load(FILE_PATH, weights_only=False)
         except ImportError:
-            print("DQN pas encore implémenté.")
+            print("QQN Failed import.")
             sys.exit(1)
     else:
-        print(f"Algo inconnu : {train.algo}")
+        print(f"Unknown algo : {train.algo}")
         sys.exit(1)
 
     learn_loop(agent, train)
@@ -86,24 +86,28 @@ def time_step_loop(agent, epsilon, state, score, train, length):
         agent.step(state, action, reward, next_state, done)
         state = next_state
         score += reward
+
         frame = train.env.render()
         if frame is not None:
             train.frames.append(frame)
+
+        length += 1
+
         if done:
             reason = get_termination_reason(next_state, terminated, truncated, info)
             train.logger.log_episode(score=score, length=length,
                                terminated=terminated, truncated=truncated,
                                reason=reason)
             break
-    return score
+    return score, length
 
 def learn_loop(agent, train):
     scores_100_episodes = deque(maxlen=100)
-    length = 0
     for episode in range(0, train.n_ep):
-        state, _ = train.env.reset(seed=train.seed)
+        state, _ = train.env.reset(seed=train.seed + episode)
         score = 0
-        score = time_step_loop(agent, train.epsilon, state, score, train, length)
+        length = 0
+        score, length = time_step_loop(agent, train.epsilon, state, score, train, length)
         scores_100_episodes.append(score)
         train.epsilon = max(train.epsilon_end, train.epsilon * train.epsilon_decay)
         if episode % 10 == 0:
@@ -118,8 +122,11 @@ def learn_loop(agent, train):
     print(f"Done. CSV → {train.log_dir}/{train.run_name}.csv")
     return 0
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True, help="Chemin vers le fichier YAML")
     args = parser.parse_args()
     run(args.config)
+
+if __name__ == "__main__":
+    main()

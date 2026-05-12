@@ -1,0 +1,6 @@
+starttrek_env
+venv
+.GEMINI.md
+todo.txt
+logs/*.csv
+configs/*.yaml
