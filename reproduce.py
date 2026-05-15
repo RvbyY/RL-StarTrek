@@ -11,27 +11,40 @@ import numpy as np
 from pathlib import Path
 
 # Configuration
-BASE_CONFIG = "configs/base_config.yaml"
+BASE_DQN = "configs/base_dqn.yaml"
+BASE_HEURISTIC = "configs/base_heuristic.yaml"
+BASE_RANDOM = "configs/base_random.yaml"
 N_SEEDS = 5
 LOG_DIR = "logs"
 CONFIGS_DIR = "configs"
 
-def create_seed_configs(startSeed):
+def create_seed_configs(startSeed, policy):
     print(f"\n{'='*60}")
     print("Step 1: Generating {n} seed configs".format(n=N_SEEDS))
     print(f"{'='*60}\n")
 
-    with open(BASE_CONFIG) as f:
+    base_map = {
+        "dqn": BASE_DQN,
+        "heuristic": BASE_HEURISTIC,
+        "random": BASE_RANDOM
+    }
+    if policy not in base_map:
+        print(f"Policy '{policy}' unknown. Using dqn")
+        policy = "dqn"
+
+    base_file = base_map[policy]
+    with open(base_file) as f:
         base_cfg = yaml.safe_load(f)
 
     config_paths = []
     for seed_idx in range(N_SEEDS):
         cfg = base_cfg.copy()
         cfg['seed'] = startSeed + seed_idx
-        cfg['run_name'] = f"dqn_seed{seed_idx}"
+        run_name = f"{policy}_seed{seed_idx}"
+        cfg['run_name'] = run_name
 
         # Create new config file
-        config_file = Path(CONFIGS_DIR) / f"dqn_seed{seed_idx}.yaml"
+        config_file = Path(CONFIGS_DIR) / f"{run_name}.yaml"
         with open(config_file, 'w') as f:
             yaml.dump(cfg, f)
         config_paths.append(str(config_file))
@@ -47,31 +60,32 @@ def run_training(config_paths):
 
     for i, config_path in enumerate(config_paths):
         print(f"\n[{i+1}/{N_SEEDS}] Training with {config_path}...")
-        cmd = ["python3", "src/train.py", "--config", config_path]
+        cmd = [sys.executable, "src/train.py", "--config", config_path]
         result = subprocess.run(cmd, cwd=".")
         if result.returncode != 0:
             print(f"ERROR: Training failed for {config_path}")
             sys.exit(1)
 
-def cleanup_eval_csv():
+def cleanup_eval_csv(policy):
     for seed_idx in range(N_SEEDS):
-        csv_file = Path(LOG_DIR) / f"dqn_seed{seed_idx}_eval.csv"
+        run_name = f"{policy}_seed{seed_idx}"
+        csv_file = Path(LOG_DIR) / "eval" / run_name / f"{run_name}_eval.csv"
         if csv_file.exists():
             csv_file.unlink()
 
 """Evaluate agent for each seed"""
-def run_evaluation(config_paths):
+def run_evaluation(config_paths, policy):
     print(f"\n{'='*60}")
     print("Step 3: Evaluating on {n} seeds".format(n=N_SEEDS))
     print(f"{'='*60}\n")
 
-    cleanup_eval_csv()
+    cleanup_eval_csv(policy)
 
     eval_scores = []
 
     for i, config_path in enumerate(config_paths):
         print(f"\n[{i+1}/{N_SEEDS}] Evaluating with {config_path}...")
-        cmd = ["python3", "src/eval.py", "--config", config_path]
+        cmd = [sys.executable, "src/eval.py", "--config", config_path]
         result = subprocess.run(cmd, cwd=".")
         if result.returncode != 0:
             print(f"ERROR: Evaluation failed for {config_path}")
@@ -80,7 +94,7 @@ def run_evaluation(config_paths):
     return eval_scores
 
 """Read evaluation scores from CSV files"""
-def read_eval_scores():
+def read_eval_scores(policy):
     print(f"\n{'='*60}")
     print("Step 4: Collecting results")
     print(f"{'='*60}\n")
@@ -88,7 +102,8 @@ def read_eval_scores():
     all_scores = []
 
     for seed_idx in range(N_SEEDS):
-        csv_file = Path(LOG_DIR) / f"dqn_seed{seed_idx}_eval.csv"
+        run_name = f"{policy}_seed{seed_idx}"
+        csv_file = Path(LOG_DIR) / "eval" / run_name / f"{run_name}_eval.csv"
         if not csv_file.exists():
             print(f"Warning: {csv_file} not found")
             continue
@@ -141,30 +156,43 @@ def report_statistics(scores):
     print(f"\nVerdict: {verdict}")
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python3 reproduce.py <startFromSeed>")
+    if len(sys.argv) != 3:
+        print(
+            "Usage: python3 reproduce.py <start_from_seed> <policy>\n"
+            "  <start_from_seed>   Starting seed value\n"
+            "  <policy>            dqn | random | heuristic"
+        )
         return
     try:
         startSeed = int(sys.argv[1])
+        policy = sys.argv[2]
     except ValueError:
         print("Argument must be int")
+        return
 
-    print("REPRODUCIBILITY PIPELINE (5-Seed Evaluation) started from seed " + str(startSeed))
+    print("REPRODUCIBILITY PIPELINE (5-Seed Evaluation) started from seed " + str(startSeed) + " with policy " + policy)
 
-    # Step 1: Generate configs
-    config_paths = create_seed_configs(startSeed)
+    config_paths = []
+    try:
+        # Step 1: Generate configs
+        config_paths = create_seed_configs(startSeed, policy)
 
-    # Step 2: Train on all seeds
-    run_training(config_paths)
+        # Step 2: Train on all seeds
+        run_training(config_paths)
 
-    # Step 3: Evaluate on all seeds
-    run_evaluation(config_paths)
+        # Step 3: Evaluate on all seeds
+        run_evaluation(config_paths, policy)
 
-    # Step 4: Collect and report
-    scores = read_eval_scores()
-    report_statistics(scores)
+        # Step 4: Collect and report
+        scores = read_eval_scores(policy)
+        report_statistics(scores)
+    finally:
+        # Step 5: Clean temporary config files
+        for cp in config_paths:
+            if os.path.exists(cp):
+                os.remove(cp)
 
-    print("Reproducibility pipeline complete")
+    print("\nReproducibility pipeline complete")
 
 if __name__ == "__main__":
     main()

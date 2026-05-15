@@ -1,7 +1,7 @@
 <div align="center">
 
 ```
-    ██╗     ██╗   ██╗███╗   ██╗ █████╗ ██████╗     ██╗      █████╗ ███╗   ██╗██████╗ ███████╗██████╗ 
+    ██╗     ██╗   ██╗███╗   ██╗ █████╗ ██████╗     ██╗      █████╗ ███╗   ██╗██████╗ ███████╗██████╗
     ██║     ██║   ██║████╗  ██║██╔══██╗██╔══██╗    ██║     ██╔══██╗████╗  ██║██╔══██╗██╔════╝██╔══██╗
     ██║     ██║   ██║██╔██╗ ██║███████║██████╔╝    ██║     ███████║██╔██╗ ██║██║  ██║█████╗  ██████╔╝
     ██║     ██║   ██║██║╚██╗██║██╔══██║██╔══██╗    ██║     ██╔══██║██║╚██╗██║██║  ██║██╔══╝  ██╔══██╗
@@ -11,7 +11,7 @@
 
 ### `< Reinforcement Learning — Epitech G-AIA-401 />`
 
-**Train an autonomous agent to land a lunar module on the Moon.**  
+**Train an autonomous agent to land a lunar module on the Moon.**
 **No pilot. No mercy. Just math.**
 
 ---
@@ -29,10 +29,10 @@
 
 You are part of one of the first teams exploring our solar system. **Destination: Mars.**
 
-Before sending humans across space, a relay base must be established on the Moon.  
+Before sending humans across space, a relay base must be established on the Moon.
 You can't afford to put a pilot in every lunar module — so you'll train one to land itself.
 
-The agent learns by **trial and error** from sparse rewards.  
+The agent learns by **trial and error** from sparse rewards.
 It will crash. A lot. Then one day, it won't.
 
 ---
@@ -71,7 +71,7 @@ python train.py --config configs/baseline_heuristic.yaml
 ├── configs/
 │   ├── baseline_random.yaml        # Random policy
 │   ├── baseline_heuristic.yaml     # Heuristic policy
-│   └── dqn.yaml                    # DQN agent
+│   └── dqn_test.yaml               # DQN example agent
 │
 ├── src/
 │   ├── env_utils.py                # Gymnasium wrapper + termination detection

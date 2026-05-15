@@ -7,5 +7,6 @@ pip install torch
 pip install gymnasium
 pip install swig
 pip install imageio
+pip install matplotlib
 pip install gymnasium['Box2D']
-python3 src/train.py --config configs/dqn.yaml
+python3 src/train.py --config configs/dqn_test.yaml

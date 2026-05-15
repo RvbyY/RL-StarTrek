@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 from typing import Optional
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class EpisodeLogger:
@@ -28,7 +29,7 @@ class EpisodeLogger:
             "terminated": terminated,
             "truncated":  truncated,
             "reason":     reason,
-            "timestamp":  time.strftime("%Y-%m-%dT%H:%M:%S"), 
+            "timestamp":  time.strftime("%Y-%m-%dT%H:%M:%S"),
             **extra,
         }
         for k in extra:
@@ -89,3 +90,74 @@ class EpisodeLogger:
             f"{icon} {row['reason']:<12}  "
             f"moy100={self.get_recent_mean(100):>+7.1f}"
         )
+
+    def generate_plots(self):
+        if not self._episodes:
+            return
+
+        episodes = [e["episode"] for e in self._episodes]
+        scores = [e["score"] for e in self._episodes]
+        lengths = [e["length"] for e in self._episodes]
+        reasons = [e["reason"] for e in self._episodes]
+        epsilons = [e.get("epsilon", 0) for e in self._episodes]
+
+        out_dir = self.csv_path.parent
+
+        # Cumulative reward per episode plot
+        plt.figure(figsize=(10, 5))
+        plt.plot(episodes, scores, label='Score', color='blue', alpha=0.6)
+        window = min(100, len(scores))
+        if window > 0:
+            moving_avg = np.convolve(scores, np.ones(window)/window, mode='valid')
+            plt.plot(episodes[window-1:], moving_avg, label=f'Moyenne ({window} ep)', color='red')
+        plt.xlabel('Épisodes')
+        plt.ylabel('Récompense (Score)')
+        plt.title('Récompense cumulée par épisode')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(out_dir / "reward_per_episode.png")
+        plt.close()
+
+        # Epsilon decay per episode plot
+        if any(epsilons):
+            plt.figure(figsize=(10, 5))
+            plt.plot(episodes, epsilons, label='Epsilon', color='green')
+            plt.xlabel('Épisodes')
+            plt.ylabel('Epsilon')
+            plt.title('Epsilon decay par épisode')
+            plt.legend()
+            plt.grid(True)
+            plt.savefig(out_dir / "epsilon_per_episode.png")
+            plt.close()
+
+        # Average length per episode plot
+        plt.figure(figsize=(10, 5))
+        plt.plot(episodes, lengths, label='Durée (steps)', color='purple', alpha=0.6)
+        if window > 0:
+            moving_avg_len = np.convolve(lengths, np.ones(window)/window, mode='valid')
+            plt.plot(episodes[window-1:], moving_avg_len, label=f'Moyenne ({window} ep)', color='magenta')
+        plt.xlabel('Épisodes')
+        plt.ylabel('Durée (Steps)')
+        plt.title('Durée des épisodes')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(out_dir / "length_per_episode.png")
+        plt.close()
+
+        # Termination reasons plot
+        plt.figure(figsize=(8, 5))
+        reason_counts = {}
+        for r in reasons:
+            reason_counts[r] = reason_counts.get(r, 0) + 1
+
+        labels = list(reason_counts.keys())
+        values = list(reason_counts.values())
+
+        plt.bar(labels, values, color=['skyblue', 'salmon', 'lightgreen', 'gray'])
+        plt.xlabel('Raison de fin')
+        plt.ylabel('Nombre d\'épisodes')
+        plt.title('Raisons de fin d\'épisode (Crash / Landing / etc.)')
+        for i, v in enumerate(values):
+            plt.text(i, v + max(values)*0.01, str(v), ha='center')
+        plt.savefig(out_dir / "termination_reasons.png")
+        plt.close()

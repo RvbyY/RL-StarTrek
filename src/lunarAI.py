@@ -13,14 +13,6 @@ from collections import deque, namedtuple
 
 env = gym.make("LunarLander-v3", continuous=False, gravity=-10.0,
                enable_wind=False, wind_power=15.0, turbulence_power=1.5)
-with open('configs/dqn.yaml') as f:
-    cfg = yaml.safe_load(f)
-learning_rate = float(cfg.get('learning_rate', 5e-4))
-minibatch = int(cfg.get('minibatch', 64))
-gamma = float(cfg.get('gamma', 0.99))
-interpolation_parameter = float(cfg.get('interpolation_parameter', 1e-3))
-replay_buffer_size = int(cfg.get('replay_buffer_size', 100000))
-
 
 class ANN(nn.Module):
 
@@ -61,22 +53,31 @@ class ReplayMemory(object):
 
 class Agent():
 
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size, action_size, cfg=None):
+        if cfg is None:
+            cfg = {}
+        self.learning_rate = float(cfg.get('learning_rate', 5e-4))
+        self.minibatch = int(cfg.get('minibatch', 64))
+        self.gamma = float(cfg.get('gamma', 0.99))
+        self.interpolation_parameter = float(cfg.get('interpolation_parameter', 1e-3))
+        self.replay_buffer_size = int(cfg.get('replay_buffer_size', 100000))
+
         self.state_size = state_size
         self.action_size = action_size
         self.local_qnetwork = ANN(state_size, action_size)
         self.target_qnetwork = ANN(state_size, action_size)
         self.target_qnetwork.load_state_dict(self.local_qnetwork.state_dict())
-        self.optimizer = torch.optim.Adam(self.local_qnetwork.parameters(), lr=learning_rate)
-        self.memory = ReplayMemory(replay_buffer_size)
+        self.optimizer = torch.optim.Adam(self.local_qnetwork.parameters(), lr=self.learning_rate)
+        self.memory = ReplayMemory(self.replay_buffer_size)
         self.t_step = 0
+        self.last_loss = 0.0
 
     def step(self, state, action, reward, next_state, done):
         self.memory.push((state, action, reward, next_state, done))
         self.t_step = (self.t_step + 1) % 4
-        if self.t_step == 0 and len(self.memory.memory) > minibatch:
-            experiences = self.memory.sample(minibatch)
-            self.learn(experiences, gamma)
+        if self.t_step == 0 and len(self.memory.memory) > self.minibatch:
+            experiences = self.memory.sample(self.minibatch)
+            self.learn(experiences, self.gamma)
 
     def get_action(self, state, epsilon):
         state = torch.from_numpy(state).float().unsqueeze(0)
@@ -95,10 +96,11 @@ class Agent():
         q_targets = rewards + (gamma * next_q_targets * (1 - dones))
         q_expected = self.local_qnetwork(states).gather(1, actions)
         loss = F.mse_loss(q_expected, q_targets)
+        self.last_loss = loss.item()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        self.soft_update(self.local_qnetwork, self.target_qnetwork, interpolation_parameter)
+        self.soft_update(self.local_qnetwork, self.target_qnetwork, self.interpolation_parameter)
 
     def soft_update(self, local_qnetwork, target_qnetwork, interpolation_parameter):
         tau = float(interpolation_parameter)

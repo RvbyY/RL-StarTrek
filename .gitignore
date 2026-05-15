@@ -1,6 +1,9 @@
 starttrek_env
 venv
+__pycache__/
+*.pyc
+logs/eval
+logs/train
 .GEMINI.md
 todo.txt
-logs/*.csv
-configs/*.yaml
+problemes.txt

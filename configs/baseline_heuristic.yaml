@@ -1,5 +1,0 @@
-run_name: baseline_heuristic
-algo: heuristic
-seed: 0
-n_episodes: 200
-log_dir: logs
