@@ -43,45 +43,54 @@ It will crash. A lot. Then one day, it won't.
 git clone <repo-url>
 cd <repo>
 
-# Setup
+# Setup using launch script
+./launch.sh
+```
+
+Or manually:
+```bash
 python3 -m venv venv
-source venv/bin/activate.fish    # fish shell
-# source venv/bin/activate       # bash / zsh
+source venv/bin/activate
+pip install -r requirements.txt # (or see launch.sh for pip commands)
 
-pip install -r requirements.txt
+# Run training
+python src/train.py --config configs/base_random.yaml
+python src/train.py --config configs/base_heuristic.yaml
+python src/train.py --config configs/dqn_test.yaml
 
-# Test that everything works
-python test_infra.py
-
-# Run baselines
-python train.py --config configs/baseline_random.yaml
-python train.py --config configs/baseline_heuristic.yaml
+# Run evaluation
+python src/eval.py --config configs/dqn_test.yaml
 ```
 
 ---
 
 ## 📁 Project Structure
 
-```
+```text
 .
-├── 🚀 train.py                     # Training entry point
-├── 🎯 eval.py                      # Evaluation entry point
-├── 🧪 test_infra.py                # Quick sanity check
+├── 🚀 launch.sh                    # Setup and quick launch script
+├── 🔁 reproduce.py                 # Script to reproduce results on 5 seeds
+├── problemes.txt                   # Notes and known issues during dev
 │
 ├── configs/
-│   ├── baseline_random.yaml        # Random policy
-│   ├── baseline_heuristic.yaml     # Heuristic policy
-│   └── dqn_test.yaml               # DQN example agent
+│   ├── base_random.yaml            # Random policy config
+│   ├── base_heuristic.yaml         # Heuristic policy config
+│   ├── dqn_test.yaml               # DQN agent test config
+│   └── base_dqn.yaml               # DQN base base config
+│
+├── doc/
+│   └── AGENT.ipynb                 # Documentation and analysis
 │
 ├── src/
+│   ├── train.py                    # Training entry point
+│   ├── eval.py                     # Evaluation entry point
 │   ├── env_utils.py                # Gymnasium wrapper + termination detection
-│   ├── logger.py                   # Episode logger → CSV + live terminal output
+│   ├── logger.py                   # Episode logger → CSV + plots + terminal
 │   ├── policies.py                 # Random & Heuristic baselines
-│   └── agent.py                    # DQN agent (PyTorch) ← WIP
+│   └── lunarAI.py                  # DQN agent (PyTorch)
 │
-├── logs/                           # CSV logs per run (auto-created)
-├── results/plots/                  # PNG figures (auto-created)
-└── videos/                         # Recorded episodes (auto-created)
+├── logs/                           # CSV logs and model weights (.pth) (auto-created)
+└── videos/                         # Recorded episodes for key milestones
 ```
 
 ---
@@ -130,16 +139,16 @@ python train.py --config configs/baseline_heuristic.yaml
 
 ## 🧠 Architecture
 
-```
-train.py  ──────────────────────────────────────────────────────────
+```text
+src/train.py  ────────────────────────────────────────────────────────
   │
   ├── make_env(cfg)               # env_utils.py
   │     └── LunarLander-v3       # Gymnasium + Box2D
   │
   ├── EpisodeLogger(csv_path)     # logger.py
-  │     └── logs every episode → CSV + terminal
+  │     └── logs every episode → CSV + terminal + Generates plots!
   │
-  └── policy.select_action(obs)   # policies.py / agent.py
+  └── policy.select_action(obs)   # policies.py / lunarAI.py
         │
         └── env.step(action)
               │
@@ -162,13 +171,19 @@ Every episode is logged with a cause — critical for debugging the agent.
 
 ---
 
-## 📈 Baselines
+## 📈 Baselines & DQN Progress
 
 | Policy | Mean Score | Notes |
 |---|---|---|
 | Random | ~-165 | Pure chaos, crashes every time |
 | Heuristic | ~TBD | Rule-based, no learning |
 | DQN | ≥ 200 | Target — solves the environment |
+
+### 🛠️ Key Improvements & Development Notes
+- **Dynamic configurations:** The DQN agent (`lunarAI.py`) parses parameters directly from YAML configuration files.
+- **Evaluation Scripts:** `eval.py` strictly exploits the policy without any random actions from epsilon decay, verifying true learning progress across saved `.pth` seed model files.
+- **Visual logging:** Plot generation has been integrated natively into the training and logging pipelines to chart returns, epsilon decay, and ablation studies perfectly over episode progression.
+- **Video optimizations:** Video generation detects important milestones to avoid full-training recording which originally overloaded the system.
 
 ---
 
@@ -177,9 +192,8 @@ Every episode is logged with a cause — critical for debugging the agent.
 All experiments run on **5 seeds (0–4)**. Results reported as **mean ± 95% CI**.
 
 ```bash
-chmod +x repro.sh
-./repro.sh
-# Regenerates all logs, plots and CSVs from scratch
+python reproduce.py
+# Regenerates all trainings, evaluations, and plots for all 5 seeds
 ```
 
 ---

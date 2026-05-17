@@ -4,5 +4,4 @@ __pycache__/
 *.pyc
 logs/eval
 .GEMINI.md
-todo.txt
 problemes.txt
