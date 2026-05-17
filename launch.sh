@@ -9,4 +9,6 @@ pip install swig
 pip install imageio
 pip install matplotlib
 pip install gymnasium['Box2D']
+pip install imageio[ffmpeg]
+pip install imageio[pyav]
 python3 src/train.py --config configs/dqn_test.yaml
