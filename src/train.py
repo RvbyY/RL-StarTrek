@@ -15,6 +15,8 @@ from src.policies import RandomPolicy, HeuristicPolicy
 from src.lunarAI import ANN, ReplayMemory, Agent
 from collections import deque
 
+VIDEO_PATTERN = "video_*.mp4"
+
 class Training():
 
     def __init__(self, cfg, cfg_path):
@@ -37,7 +39,64 @@ class Training():
         os.makedirs(self.run_folder, exist_ok=True)
         self.model_path = f"{base_dir}/brain/{self.run_name}_model.pth"
         self.logger = EpisodeLogger(f"{self.run_folder}/{self.run_name}.csv", run_name=self.run_name, verbose=True)
-        self.frames = []
+        self.frames = deque(maxlen=5)
+
+def video_index(path):
+    suffix = path.stem.split("_")[-1]
+    return int(suffix) if suffix.isdigit() else -1
+
+def show_video_of_model(agent, env_name, output_dir="videos", keep_last=5):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    existing_videos = sorted(output_dir.glob(VIDEO_PATTERN), key=video_index)
+    next_index = 1
+    if existing_videos:
+        next_index = video_index(existing_videos[-1]) + 1
+
+    env = gym.make(env_name, render_mode='rgb_array')
+    state, _ = env.reset()
+    done = False
+    frames = []
+    while not done:
+        frame = env.render()
+        frames.append(frame)
+        action = agent.get_action(state, epsilon=1)
+        state, _, done, _, _ = env.step(action.item())
+    env.close()
+
+    video_path = output_dir / f"video_{next_index}.mp4"
+    imageio.mimsave(video_path, frames, fps=30)
+
+    if keep_last > 0:
+        videos_to_remove = sorted(output_dir.glob(VIDEO_PATTERN), key=video_index)[:-keep_last]
+        for old_video in videos_to_remove:
+            old_video.unlink(missing_ok=True)
+
+
+def save_recent_training_videos(train, output_dir="videos"):
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    def next_video_index(existing_paths):
+        if not existing_paths:
+            return 1
+        return max(video_index(path) for path in existing_paths) + 1
+
+    existing_videos = sorted(output_dir.glob(VIDEO_PATTERN), key=video_index)
+    next_index = next_video_index(existing_videos)
+
+    for episode_frames in train.frames:
+        if not episode_frames:
+            continue
+
+        video_path = output_dir / f"video_{next_index}.mp4"
+        imageio.mimsave(video_path, episode_frames, fps=30)
+        next_index += 1
+
+    videos_to_remove = sorted(output_dir.glob(VIDEO_PATTERN), key=video_index)[:-5]
+    for old_video in videos_to_remove:
+        old_video.unlink(missing_ok=True)
+
 
 def run(cfg_path: str):
     with open(cfg_path) as f:
@@ -62,6 +121,7 @@ def run(cfg_path: str):
 
     learn_loop(agent, train)
     train.env.close()
+    save_recent_training_videos(train)
 
     # GIF script temporarily deactivated for perf
     # video_dir = "./videos"
@@ -86,6 +146,7 @@ def run(cfg_path: str):
     return 0
 
 def time_step_loop(agent, epsilon, state, score, train, length):
+    episode_frames = []
     for _ in range(0, train.max_time_step):
         if hasattr(agent, "get_action"):
             action = agent.get_action(state, epsilon)
@@ -101,14 +162,14 @@ def time_step_loop(agent, epsilon, state, score, train, length):
         state = next_state
         score += reward
 
-        # GIF script temporarily deactivated for perf
-        # frame = train.env.render()
-        # if frame is not None:
-        #     train.frames.append(frame)
+        frame = train.env.render()
+        if frame is not None:
+            episode_frames.append(frame)
 
         length += 1
 
         if done:
+            train.frames.append(episode_frames)
             reason = get_termination_reason(next_state, terminated, truncated, info)
             train.logger.log_episode(score=score, length=length,
                                terminated=terminated, truncated=truncated,
