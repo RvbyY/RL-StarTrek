@@ -1,0 +1,9 @@
+run_name: ablation_no_epsilon_decay
+algo: dqn
+seed: 0
+n_episodes: 500
+max_time_steps: 1000
+epsilon_start: 0.1
+epsilon_end: 0.1
+epsilon_decay: 1.0
+log_dir: logs

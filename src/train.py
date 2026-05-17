@@ -179,25 +179,29 @@ def time_step_loop(agent, epsilon, state, score, train, length):
 
 def learn_loop(agent, train):
     scores_100_episodes = deque(maxlen=100)
-    for episode in range(0, train.n_ep):
-        state, _ = train.env.reset(seed=train.seed + episode)
-        score = 0
-        length = 0
-        score, length = time_step_loop(agent, train.epsilon, state, score, train, length)
-        scores_100_episodes.append(score)
-        train.epsilon = max(train.epsilon_end, train.epsilon * train.epsilon_decay)
-        if episode % 10 == 0:
-            print('Episode {} Avg Score: {:.2f}'.format(episode, np.mean(scores_100_episodes)))
-        if np.mean(scores_100_episodes) >= 200:
-            print('Congratulation, Solved in {:d} episodes \t Avg Score {:.2f}'.format(episode, np.mean(scores_100_episodes)))
-            break
-
-    if train.algo == "dqn":
-        torch.save(agent, train.model_path)
-    train.env.close()
-    train.logger.print_summary()
-    train.logger.generate_plots()
-    print(f"Done. CSV/Plots → {train.run_folder}/{train.run_name}.csv")
+    try:
+        for episode in range(0, train.n_ep):
+            state, _ = train.env.reset(seed=train.seed + episode)
+            score = 0
+            length = 0
+            score, length = time_step_loop(agent, train.epsilon, state, score, train, length)
+            scores_100_episodes.append(score)
+            train.epsilon = max(train.epsilon_end, train.epsilon * train.epsilon_decay)
+            if episode % 10 == 0:
+                print('Episode {} Avg Score: {:.2f}'.format(episode, np.mean(scores_100_episodes)))
+            if np.mean(scores_100_episodes) >= 200:
+                print('Congratulation, Solved in {:d} episodes \t Avg Score {:.2f}'.format(episode, np.mean(scores_100_episodes)))
+                break
+    except KeyboardInterrupt:
+        print("\nKeyboard interruption. Save in progress...")
+    finally:
+        if train.algo == "dqn":
+            torch.save(agent, train.model_path)
+        train.env.close()
+        train.logger.print_summary()
+        if hasattr(train.logger, 'generate_plots'):
+            train.logger.generate_plots()
+        print(f"Done. CSV/Plots → {train.run_folder}/{train.run_name}.csv")
     return 0
 
 def main():
