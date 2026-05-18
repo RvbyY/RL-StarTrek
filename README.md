@@ -171,6 +171,10 @@ Every episode is logged with a cause — critical for debugging the agent.
 
 ---
 
+![reward per episode](logs/train/dqn/reward_per_episode.png)
+
+---
+
 ## 📈 Baselines & DQN Progress
 
 | Policy | Mean Score | Notes |
@@ -216,6 +220,22 @@ pyyaml           >= 6.0
 |---|---|
 | Infra & Baselines | `env_utils`, `logger`, `policies`, `train`, `eval`, configs, README |
 | DQN Agent | `agent.py`, replay buffer, target network, epsilon decay, ablations |
+
+---
+
+## <img width="35" height="35" alt="image" src="https://github.com/user-attachments/assets/fed7e47f-31dd-4565-95df-94f5f13bf00b" /> Videos
+
+### Failed (not trained):
+<div align="center">
+    
+![failed video](videos/ezgif.com-video-to-gif-converter.gif)
+</div>
+
+### Succeed (trained):
+<div align="center">
+
+![succeed video](videos/video_5-ezgif.com-video-to-gif-converter.gif)
+</div>
 
 ---
 
